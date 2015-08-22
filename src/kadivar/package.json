@@ -1,0 +1,20 @@
+{
+  "name": "kadivar",
+  "version": "1.0.0",
+  "description": "",
+  "main": "estizah.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "author": "",
+  "license": "ISC",
+  "dependencies": {
+    "cheerio": "^0.19.0",
+    "common-node": "^0.10.20",
+    "html-entities": "^1.1.2",
+    "q": "^1.4.1",
+    "request": "^2.58.0",
+    "sync-request": "^2.0.1",
+    "to-markdown": "0.0.3"
+  }
+}

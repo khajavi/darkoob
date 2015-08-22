@@ -1,0 +1,4 @@
+.project
+.settings/
+.tern-project
+node_modules/
