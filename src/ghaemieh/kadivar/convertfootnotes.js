@@ -3,7 +3,9 @@ var request = require('sync-request');
 var toMarkdown = require('to-markdown').toMarkdown;
 var fs = require('fs');
 var Entities = require('html-entities').XmlEntities;
+var Q = require('q');
 entities = new Entities();
+
 
 var url = 'estizah.md';
 
@@ -26,7 +28,7 @@ String.prototype.toEnglishDigits = function () {
         '۶': '6',
         '۷': '7',
         '۸': '8',
-        '۹': '9',
+        '۹': '9'
     }
 
     return parseInt(this.replace(/[۰-۹]/g, function (w) {
@@ -56,7 +58,7 @@ function flat_footnotes(data, title) {
     for (i in array) {
         if (!array[i].startsWith('[')) {
             array[i] = array[i].replace(/\[([۰-۹])]/g, function (matched, foot_note_index) {
-                return '_(ش.پ.' + footnotes[foot_note_index.toEnglishDigits()].trim() + 'پ.پ._)';
+                return '(شروع پانویس ' + footnotes[foot_note_index.toEnglishDigits()].trim() + ' پایان پانویس)';
             });
         }
     }
@@ -72,22 +74,34 @@ getFootnotes('sdfdf');
 
 //fs.readFile(url, 'utf8', flat_footnotes)
 
-var index = 0;
+index = 0;
 
 fs.readFile("bookurls.json", 'utf8', function (err, data) {
     book = JSON.parse(data);
 
+
+    var list=[];
     for (section in book.contents) {
         for (chapter in book.contents[section].contents) {
-            convertToMarkdown(book.contents[section].contents[chapter].url, book.contents[section].contents[chapter].title);
+            list.push({a:book.contents[section].contents[chapter].url, b:book.contents[section].contents[chapter].title, c: ++index});
+          //  convertToMarkdown(callback,;
         }
     }
+    var callback=function(){
+        var c=list.reverse().pop();
+        if(c!=null) {
+            console.log(c.a, c.b)
+            convertToMarkdown(callback, c.a, c.b, c.c);
+        }
+    };
+    callback();
 });
 
-var convertToMarkdown = function (url, title) {
-    res = request('GET', url)
 
-    ++index;
+var convertToMarkdown = function (callback,url, title, index) {
+
+
+    res = request('GET', url)
 
     console.log(index)
     $ = cheerio.load(res.getBody());
@@ -96,12 +110,13 @@ var convertToMarkdown = function (url, title) {
 
 
     var mark = toMarkdown(body);
-    mark = "# " + title + "\n\n" + mark
+    mark = mark.replace(/<(?:.|\n)*?>/gm, '');
+    mark = "# " + title + "\n\n" + mark;
     //console.log(entities.decode(mark).split("\n"))
 
     fs.writeFileSync('book/' + index + ". " + title + '.md', flat_footnotes(entities.decode(mark)), 'utf8', function () {
-    })
-
+    });
+    callback();
 
 }
 
