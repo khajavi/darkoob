@@ -11,15 +11,17 @@
     "connect-timeout": "^1.6.2",
     "express": "^4.13.3",
     "html-entities": "^1.1.3",
+    "lodash": "^3.10.1",
     "q": "^1.4.1",
     "request": "^2.61.0"
   },
   "devDependencies": {
+    "babel-core": "^5.8.24",
     "grunt": "^0.4.5",
-    "grunt-develop": "^0.4.0",
     "grunt-contrib-watch": "^0.6.1",
+    "grunt-develop": "^0.4.0",
+    "load-grunt-tasks": "^3.2.0",
     "request": "^2.60.0",
-    "time-grunt": "^1.2.1",
-    "load-grunt-tasks": "^3.2.0"
+    "time-grunt": "^1.2.1"
   }
 }
