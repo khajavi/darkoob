@@ -37,6 +37,9 @@ function parseFootnote(doc) {
   $('footnote').each(function () {
     var footnote = $(this).html();
 
+    var eolRegex = /\r\n/gi;
+    footnote = footnote.replace(eolRegex, '');
+
     var regex = /\((\d+)\) ?. ?(.*)/i;
 
     var note = footnote.match(regex);
