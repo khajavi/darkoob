@@ -59,7 +59,7 @@ object QuranStudies extends App {
   import org.json4s.JsonDSL._
 
   val jsonAst = {
-    "savs" -> newDict.map {
+    newDict.map {
       s => ("title" -> s.title) ~ ("phrase" -> s.phrase) ~ ("description" -> s.description) ~ ("references" -> s.references.map(_.map { r =>
         ("surah" -> r.suraNumber) ~ ("ayah" -> r.ayahNumber) ~ ("start" -> r.start)
       }))
