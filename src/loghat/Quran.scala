@@ -17,7 +17,7 @@ case class OriginalEntry(title: Option[String], aye: Option[String], description
 
 case class Entry(title: Option[String], phrase: Option[String], description: Option[String], references: Option[ListBuffer[EntryRef]])
 
-case class EntryRef(suraNumber: Int, ayahNumber: Option[Int], start: Option[Int])
+case class EntryRef(suraNumber: Int, ayahNumber: Option[Int], start: Option[Int], wordIndex: Option[Int])
 
 case class OriginalEntries(index: Int, entries: Option[List[OriginalEntry]])
 
@@ -36,16 +36,18 @@ object QuranStudies extends App {
     val matchedAyas = entry.title.map { title =>
       val matchedAyas = quran.getAyats.map { ayah =>
         val index = ayah.raw.removePunctuation.indexOf(" " + title.removePunctuation + " ")
-        (index, ayah)
+        val wordIndex = ayah.raw.removePunctuation.split(" +").indexOf(title.removePunctuation)
+        (index, wordIndex, ayah)
       }
       matchedAyas.filter(_._1 != -1)
     }
     val newRefs = matchedAyas.map { list =>
       list.map { e =>
         val index = e._1
-        val surahNumber = e._2.surahNumber
-        val ayahNumber = e._2.ayahNumber
-        EntryRef(surahNumber, Option(ayahNumber), Option(index))
+        val wordIndex = e._2
+        val surahNumber = e._3.surahNumber
+        val ayahNumber = e._3.ayahNumber
+        EntryRef(surahNumber, Option(ayahNumber), Option(index), Option(wordIndex))
       }
     }
     entry.references.foreach { refs =>
@@ -61,7 +63,7 @@ object QuranStudies extends App {
   val jsonAst = {
     newDict.map {
       s => ("title" -> s.title) ~ ("phrase" -> s.phrase) ~ ("description" -> s.description) ~ ("references" -> s.references.map(_.map { r =>
-        ("surah" -> r.suraNumber) ~ ("ayah" -> r.ayahNumber) ~ ("start" -> r.start)
+        ("surah" -> r.suraNumber) ~ ("ayah" -> r.ayahNumber) ~ ("start" -> r.start) ~ ("word" -> r.wordIndex)
       }))
     }
   }
@@ -95,31 +97,7 @@ object loghatname {
   def getPreferedEntry = entries.map { originalEntry =>
     val footnotes = originalEntry.footnotes
       .map(_.flatMap(_.flatMap(_.note))).map(_.flatten)
-    //    val maybeMaybeRefses: Option[List[Option[List[EntryRef]]]] = footnotes.map { notes =>
-    //      notes.flatMap {
-    //        _.map {
-    //          note =>
-    //            note.ayat.map {
-    //              _.map {
-    //                aya =>
-    //                  val surahNumber = quran.getSurahNumber(note.sooreh.get)
-    //
-    //                  val word = if (originalEntry.title.isDefined) originalEntry.title.get.replaceAll("<p>", "").trim.removePunctuation else ""
-    //
-    //                  val ayahNumber: Option[Int] = aya.map(_.toInt)
-    //
-    //                  val start: Option[Int] = quran.getAya(surahNumber
-    //                    , ayahNumber.getOrElse(-1)).map {
-    //                    _.raw.removePunctuation.normalize.indexOf(word.removePunctuation.normalize)
-    //                  }
-    //                  EntryRef(surahNumber, aya.map(_.toInt), start)
-    //              }
-    //            }
-    //        }
-    //      }
-    //    }
-    //    val maybeRefs = maybeMaybeRefses.map(_.flatten).map(_.flatten.to[ListBuffer])
-    //    val a: ListBuffer[EntryRef] = ListBuffer[EntryRef]()
+
     val mayBeRefs = Option(ListBuffer[EntryRef]())
     val title = originalEntry.title.map(_.replace("<p>", "").trim)
     Entry(title, originalEntry.aye, originalEntry.description, mayBeRefs)
@@ -144,13 +122,6 @@ object quran {
     l =>
       QuranSurahs(l(0).toInt, l(1), if (l.size == 3) Option(l(2)) else None)
   }.toIndexedSeq.distinct
-
-  //  quranMetas.sortBy(_.id) foreach (row => {
-  //    val str = row.id + "," + row.name + "," + (row.lang match {
-  //      case None => ""
-  //      case other => other.get
-  //    })
-  //  })
 
   def getAyats = ayats
 
