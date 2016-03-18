@@ -2,6 +2,7 @@ import java.io.{File, PrintWriter}
 import java.util.regex.Pattern
 
 import com.rockymadden.stringmetric.similarity.DiceSorensenMetric
+import com.typesafe.scalalogging.LazyLogging
 import org.json4s._
 import org.json4s.jackson.JsonMethods._
 
@@ -27,19 +28,23 @@ case class OriginalAyat(page: Int, text: String, raw: String, id: String)
 
 case class Ayat(page: Int, text: String, raw: String, surahNumber: Int, ayahNumber: Int)
 
-object QuranStudies extends App {
+object QuranStudies extends App with LazyLogging {
   implicit def stringToString(s: String): StringUtils = new StringUtils(s)
 
+  logger.info("getting entries")
   val dict = loghatname.getPreferedEntry
 
+  logger.info("adding new entries")
   val newDict = dict.map { entry =>
+
+    logger.info("processing " + entry.title)
     val matchedAyas = entry.title.map { title =>
       val matchedAyas = quran.getAyats.map { ayah =>
-        val index = ayah.raw.removePunctuation.indexOf(" " + title.removePunctuation + " ")
+        val index = ayah.raw.indexOf(title.removePunctuation + " ")
         val wordIndex = ayah.raw.removePunctuation.split(" +").indexOf(title.removePunctuation)
         (index, wordIndex, ayah)
       }
-      matchedAyas.filter(_._1 != -1)
+      matchedAyas.filter(_._1 != -1).filter(_._2 != -1)
     }
     val newRefs = matchedAyas.map { list =>
       list.map { e =>
@@ -54,12 +59,16 @@ object QuranStudies extends App {
       newRefs.foreach { newRefs =>
         refs ++= newRefs
       }
+      val distinct = refs.distinct
+      refs.clear
+      refs ++= distinct
     }
     entry
   }
 
   import org.json4s.JsonDSL._
 
+  logger.info("creating json database")
   val jsonAst = {
     newDict.map {
       s => ("title" -> s.title) ~ ("phrase" -> s.phrase) ~ ("description" -> s.description) ~ ("references" -> s.references.map(_.map { r =>
@@ -69,16 +78,16 @@ object QuranStudies extends App {
   }
 
   val writer = new PrintWriter(new File("words.db.json"))
+  logger.info("writing to file")
   writer.write(pretty(jsonAst))
   writer.close()
 
   val refs = newDict.flatMap(_.references).flatten
 
-  println("number of refs: " + refs.length)
-  println("average number of refs per ayah: " + refs.length.toDouble / 6236)
-  println("word.db.json created.")
+  logger.info("number of refs: " + refs.length)
+  logger.info("average number of refs per ayah: " + refs.length.toDouble / 6236)
+  logger.info("word.db.json created.")
 }
-
 
 object loghatname {
   implicit val formats = DefaultFormats
@@ -98,9 +107,43 @@ object loghatname {
     val footnotes = originalEntry.footnotes
       .map(_.flatMap(_.flatMap(_.note))).map(_.flatten)
 
+
+    val maybeMaybeRefses: Option[List[Option[List[EntryRef]]]] = footnotes.map { notes =>
+      notes.flatMap {
+        _.map {
+          note =>
+            note.ayat.map {
+              _.map {
+                aya =>
+                  val surahNumber = quran.getSurahNumber(note.sooreh.get)
+
+                  val word = if (originalEntry.title.isDefined) originalEntry.title.get.replaceAll("<p>", "").trim.removePunctuation else ""
+
+                  val ayahNumber: Option[Int] = aya.map(_.toInt)
+
+                  val start: Option[Int] = quran.getAya(surahNumber
+                    , ayahNumber.getOrElse(-1)).map {
+                    _.raw.removePunctuation.indexOf(word.removePunctuation)
+                  }
+
+                  val wordIndex: Option[Int] = quran.getAya(surahNumber, ayahNumber.getOrElse(-1)).map {
+                    _.raw.removePunctuation.split(" +").indexOf(word.removePunctuation)
+                  }
+
+                  EntryRef(surahNumber, aya.map(_.toInt), start, wordIndex)
+              }
+            }
+        }
+      }
+    }
+    val maybeRefs = maybeMaybeRefses.map(_.flatten).map(_.flatten.to[ListBuffer])
+    val a: ListBuffer[EntryRef] = ListBuffer[EntryRef]()
+
+
+
     val mayBeRefs = Option(ListBuffer[EntryRef]())
     val title = originalEntry.title.map(_.replace("<p>", "").trim)
-    Entry(title, originalEntry.aye, originalEntry.description, mayBeRefs)
+    Entry(title, originalEntry.aye, originalEntry.description, maybeRefs)
   }
 }
 
@@ -137,7 +180,7 @@ object quran {
     }
   }
 
-  def getSurahNumber(SurahName: String) {
+  def getSurahNumber(SurahName: String) = {
     implicit def stringToString(s: String): StringUtils = new StringUtils(s)
 
     val fixedName: String = correctSuraName(SurahName)
