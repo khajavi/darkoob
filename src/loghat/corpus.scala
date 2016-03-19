@@ -37,8 +37,8 @@ object corpus extends App with LazyLogging {
     wordMap.map { case ((title, raw), list) =>
       ("title" -> title) ~
         ("raw_title" -> raw) ~ ("refs" -> list.map { ref =>
-        ("ayah" -> ref.surah) ~
-          ("surah" -> ref.ayah) ~
+        ("surah" -> ref.surah) ~
+          ("ayah" -> ref.ayah) ~
           ("token" -> ref.token) ~
           ("subtoken" -> ref.subtoken)
       })
