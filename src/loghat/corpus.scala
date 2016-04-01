@@ -6,6 +6,7 @@ import org.jqurantree.orthography.Document
 import org.json4s.JsonAST.JArray
 
 import scala.collection.SortedMap
+import scala.collection.immutable.IndexedSeq
 import scala.io.Source
 
 case class Location(surah: Int, ayah: Int, token: Int, subtoken: Int, token_str: String, token_raw_str: String)
@@ -14,7 +15,7 @@ object corpus extends App with LazyLogging {
   val corpus_url = "quranic-corpus-morphology-0.4.txt"
   val lines = Source.fromFile(corpus_url).getLines.toList.drop(57)
 
-//  logger.info("parsing corpus")
+  //  logger.info("parsing corpus")
 
   val pattern = "\\((\\d+):(\\d+):(\\d+):(\\d+)\\).*?LEM:(.*?)\\|".r
   val words = lines.filter(_.contains("ROOT")).flatMap { row =>
@@ -24,7 +25,7 @@ object corpus extends App with LazyLogging {
     }.toIndexedSeq
   }
 
-  val sorted = words.groupBy { case (_, token) =>
+  val sorted: IndexedSeq[((String, String), List[Location])] = words.groupBy { case (_, token) =>
     (token.toString, token.removeDiacritics().toString)
   }.map { case (token, list) =>
     (token, list.map(_._1))
@@ -32,23 +33,27 @@ object corpus extends App with LazyLogging {
 
   val wordMap = SortedMap(sorted: _*)
 
+  val groupedWordMap = wordMap.map { case ((lemma, _), locations) =>
+    (lemma, locations.groupBy(_.token_str))
+  }
+
+  //  logger.info("creating json file")
   import org.json4s.JsonDSL._
 
-//  logger.info("creating json file")
   val jsonAst = {
-    wordMap.map { case ((title, raw), list) =>
-      ("lemma" -> JArray(List(title, raw))) ~ ("refs" -> list.map { ref =>
-        ("surah" -> ref.surah) ~
-          ("ayah" -> ref.ayah) ~
-          ("word" -> JArray(List(ref.token_str,ref.token_raw_str))) ~
-          ("token" -> JArray(List(ref.token,ref.subtoken)))
-      })
+    groupedWordMap.map { case (lemma, variants) =>
+      ("lemma" -> lemma) ~ ("variants" ->
+        variants.map { case (word, locs) =>
+          ("word" -> word) ~ ("refs" -> locs.map { l =>
+            JArray(List(l.ayah, l.token, l.subtoken))
+          })
+        })
     }
   }
 
   import org.json4s.jackson.JsonMethods._
 
-//  logger.info("writing to file")
+  //  logger.info("writing to file")
   val writer = new PrintWriter(new File("lemma.words.json"))
   writer.write(pretty(jsonAst))
   writer.close()
