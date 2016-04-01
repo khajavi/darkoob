@@ -17,6 +17,5 @@ libraryDependencies ++= Seq(
   "ch.qos.logback" % "logback-classic" % "1.0.3"
 )
 
-scalaSource in Compile := file("./")
-
+scalaSource in Compile := baseDirectory.value / "."
 
